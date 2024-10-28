@@ -16,12 +16,12 @@ from blog.models import Category, Comment, Post, User
 def post_all_query():
     query_set = (
         Post.objects.select_related(
-            "category",
-            "location",
-            "author",
+            'category',
+            'location',
+            'author',
         )
-        .annotate(comment_count=Count("comments"))
-        .order_by("-pub_date")
+        .annotate(comment_count=Count('comments'))
+        .order_by('-pub_date')
     )
     return query_set
 
@@ -38,7 +38,7 @@ def post_published_query():
 def get_post_data(post_data):
     post = get_object_or_404(
         Post,
-        pk=post_data["pk"],
+        pk=post_data['pk'],
         pub_date__lte=timezone.now(),
         is_published=True,
         category__is_published=True,
@@ -46,32 +46,42 @@ def get_post_data(post_data):
     return post
 
 
+class PostMixin(LoginRequiredMixin):
+    model = Post
+    template_name = 'blog/create.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.get_object().author != request.user:
+            return redirect('blog:post_detail', pk=self.kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+
 class CommentEditMixin:
     model = Comment
-    pk_url_kwarg = "comment_pk"
-    template_name = "blog/comment.html"
+    pk_url_kwarg = 'comment_pk'
+    template_name = 'blog/comment.html'
 
 
 class CommentMixinView(LoginRequiredMixin, View):
     model = Comment
-    template_name = "blog/comment.html"
-    pk_url_kwarg = "comment_pk"
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_pk'
 
     def dispatch(self, request, *args, **kwargs):
         if self.get_object().author != request.user:
-            return redirect("blog:post_detail", pk=self.kwargs["pk"])
+            return redirect('blog:post_detail', pk=self.kwargs['pk'])
         get_post_data(self.kwargs)
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
-        pk = self.kwargs["pk"]
-        return reverse("blog:post_detail", kwargs={"pk": pk})
+        pk = self.kwargs['pk']
+        return reverse('blog:post_detail', kwargs={'pk': pk})
 
 
 # Главная страница.
 class IndexListView(ListView):
     model = Post
-    template_name = "blog/index.html"
+    template_name = 'blog/index.html'
     queryset = post_published_query()
     paginate_by = 10
 
@@ -79,22 +89,22 @@ class IndexListView(ListView):
 # Представление конкретного поста.
 class PostDetailView(DetailView):
     model = Post
-    template_name = "blog/detail.html"
+    template_name = 'blog/detail.html'
     post_data = None
 
     def get_queryset(self):
-        self.post_data = get_object_or_404(Post, pk=self.kwargs["pk"])
+        self.post_data = get_object_or_404(Post, pk=self.kwargs['pk'])
         if self.post_data.author == self.request.user:
-            return post_all_query().filter(pk=self.kwargs["pk"])
-        return post_published_query().filter(pk=self.kwargs["pk"])
+            return post_all_query().filter(pk=self.kwargs['pk'])
+        return post_published_query().filter(pk=self.kwargs['pk'])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["form"] = CommentEditForm()
-        context["flag"] = self.check_post_data()
-        context["comments"] = (
+        context['form'] = CommentEditForm()
+        context['flag'] = self.check_post_data()
+        context['comments'] = (
             self.object.comments.all()
-            .select_related("author")
+            .select_related('author')
         )
         return context
 
@@ -110,26 +120,19 @@ class PostDetailView(DetailView):
 
 
 # Редактирование поста.
-class PostUpdateView(LoginRequiredMixin, UpdateView):
-    model = Post
+class PostUpdateView(PostMixin, UpdateView):
     form_class = PostEditForm
-    template_name = "blog/create.html"
-
-    def dispatch(self, request, *args, **kwargs):
-        if self.get_object().author != request.user:
-            return redirect("blog:post_detail", pk=self.kwargs["pk"])
-        return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
-        pk = self.kwargs["pk"]
-        return reverse("blog:post_detail", kwargs={"pk": pk})
+        pk = self.kwargs['pk']
+        return reverse('blog:post_detail', kwargs={'pk': pk})
 
 
 # Создание поста.
 class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = PostEditForm
-    template_name = "blog/create.html"
+    template_name = 'blog/create.html'
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -137,36 +140,29 @@ class PostCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         username = self.request.user
-        return reverse("blog:profile", kwargs={"username": username})
+        return reverse('blog:profile', kwargs={'username': username})
 
 
 # Удаление поста.
-class PostDeleteView(LoginRequiredMixin, DeleteView):
-    model = Post
-    template_name = "blog/create.html"
-
-    def dispatch(self, request, *args, **kwargs):
-        if self.get_object().author != request.user:
-            return redirect("blog:post_detail", pk=self.kwargs["pk"])
-        return super().dispatch(request, *args, **kwargs)
+class PostDeleteView(PostMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["form"] = PostEditForm(instance=self.object)
+        context['form'] = PostEditForm(instance=self.object)
         return context
 
     def get_success_url(self):
         username = self.request.user
-        return reverse_lazy("blog:profile", kwargs={"username": username})
+        return reverse_lazy('blog:profile', kwargs={'username': username})
 
 
 # Отображение профиля.
 class UserListView(IndexListView):
-    template_name = "blog/profile.html"
+    template_name = 'blog/profile.html'
     author = None
 
     def get_queryset(self):
-        username = self.kwargs["username"]
+        username = self.kwargs['username']
         self.author = get_object_or_404(User, username=username)
         if self.author == self.request.user:
             return post_all_query().filter(author=self.author)
@@ -174,7 +170,7 @@ class UserListView(IndexListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["profile"] = self.author
+        context['profile'] = self.author
         return context
 
 
@@ -185,7 +181,7 @@ class CategoryDetailView(IndexListView):
     category = None
 
     def get_queryset(self):
-        slug = self.kwargs["category_slug"]
+        slug = self.kwargs['category_slug']
         self.category = get_object_or_404(
             Category, slug=slug, is_published=True
         )
@@ -193,7 +189,7 @@ class CategoryDetailView(IndexListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["category"] = self.category
+        context['category'] = self.category
         return context
 
 
@@ -201,21 +197,21 @@ class CategoryDetailView(IndexListView):
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = User
     form_class = UserForm
-    template_name = "blog/user.html"
+    template_name = 'blog/user.html'
 
     def get_object(self, queryset=None):
         return self.request.user
 
     def get_success_url(self):
         username = self.request.user
-        return reverse("blog:profile", kwargs={"username": username})
+        return reverse('blog:profile', kwargs={'username': username})
 
 
 # Создание комментария.
 class CommentCreateView(LoginRequiredMixin, CreateView):
     model = Comment
     form_class = CommentEditForm
-    template_name = "blog/comment.html"
+    template_name = 'blog/comment.html'
     post_data = None
 
     def dispatch(self, request, *args, **kwargs):
@@ -230,22 +226,22 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        pk = self.kwargs["pk"]
-        return reverse("blog:post_detail", kwargs={"pk": pk})
+        pk = self.kwargs['pk']
+        return reverse('blog:post_detail', kwargs={'pk': pk})
 
     def send_author_email(self):
         post_url = self.request.build_absolute_uri(self.get_success_url())
         recipient_email = self.post_data.author.email
-        subject = "New comment"
+        subject = 'New comment'
         message = (
-            f"Пользователь {self.request.user} добавил "
-            f"комментарий к посту {self.post_data.title}.\n"
-            f"Читать комментарий {post_url}"
+            f'Пользователь {self.request.user} добавил '
+            f'комментарий к посту {self.post_data.title}.\n'
+            f'Читать комментарий {post_url}'
         )
         send_mail(
             subject=subject,
             message=message,
-            from_email="from@example.com",
+            from_email='from@example.com',
             recipient_list=[recipient_email],
             fail_silently=True,
         )
