@@ -22,7 +22,7 @@
 ---
 1. Клонировать репозиторий:
 ```bash
-git clone git@github.com:JarexTI/django_sprint3.git
+git clone git@github.com:JarexTI/django_sprint4.git
 ```
 2. Создать и активировать виртуальное окружение:
 ```bash
@@ -83,7 +83,7 @@ Setting Up the Project from Repository (Windows)
 1. Clone the repository:
 
 ```bash
-git clone git@github.com:JarexTI/django_sprint3.git
+git clone git@github.com:JarexTI/django_sprint4.git
 ```
 
 2. Create and activate the virtual environment:
